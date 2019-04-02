@@ -69,6 +69,20 @@ class TeamCityFormatter < XCPretty::Simple
   def format_phase_success(phase_name)
     "##teamcity[progressMessage '#{phase_name} Success']"
   end
+  
+  # Return empty strings for all warning methods. Modi is too bad, and our build 
+  # logs are actually too big that TC can't return them without crashing the browser.
+  def format_warning(message)
+    "" # return nothing
+  end
+
+  def format_compile_warning(file_name, file_path, reason, line, cursor)
+    "" # return nothing
+  end
+
+  def format_ld_warning(message)
+    "" # return nothing
+  end
 
 end
 
