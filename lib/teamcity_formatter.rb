@@ -149,6 +149,8 @@ class TeamCityFormatter < XCPretty::Simple
     STDOUT.puts "##teamcity[message text='#{message}' errorDetails='#{format_details(details)}' status='ERROR']\n"
   end
 
+  # Need to sub out characters so that TC can parse the ##teamcity message correctly
+  # https://www.jetbrains.com/help/teamcity/build-script-interaction-with-teamcity.html#BuildScriptInteractionwithTeamCity-Escapedvalues
   def format_details(detail)
     detail.gsub('|', '||')
           .gsub("\n", '|n')
