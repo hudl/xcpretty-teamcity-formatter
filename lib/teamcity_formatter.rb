@@ -12,6 +12,7 @@ class TeamCityFormatter < XCPretty::Simple
 
   def initialize(use_unicode, colorize)
     super
+    STDOUT.puts "##teamcity[compilationStarted compiler='xcodebuild']"
     @warnings = []
     @ld_warnings = []
     @compile_warnings = []
@@ -22,6 +23,9 @@ class TeamCityFormatter < XCPretty::Simple
     @duplicate_symbols_errors = []
     @failures = {}
     @tests_summary_messages = []
+    at_exit do
+      STDOUT.puts "##teamcity[compilationFinished compiler='xcodebuild']"
+    end
   end
 
   # These first 6 overrides don't log to the json file.
@@ -94,6 +98,7 @@ class TeamCityFormatter < XCPretty::Simple
       cursor: cursor
     }
     write_to_file_if_needed
+    teamcity_error_message("CompileError", "#{file_path}: #{reason}\n#{line}\n#{cursor}")
     super
   end
 
@@ -103,6 +108,7 @@ class TeamCityFormatter < XCPretty::Simple
       reason: reason
     }
     write_to_file_if_needed
+    teamcity_error_message("FileMissingError", "#{file_path}: #{reason}")
     super
   end
 
@@ -113,6 +119,10 @@ class TeamCityFormatter < XCPretty::Simple
       reference: reference
     }
     write_to_file_if_needed
+    teamcity_error_message("UndefinedSymbolsError",
+      "#{message}\n" \
+      "> Symbol: #{symbol}\n" \
+      "> Referenced from: #{reference}")
     super
   end
 
@@ -122,6 +132,9 @@ class TeamCityFormatter < XCPretty::Simple
       file_paths: file_paths
     }
     write_to_file_if_needed
+    teamcity_error_message("DuplicateSymbolsError",
+      "#{message}\n" \
+      "> #{file_paths.join("\n> ")}")
     super
   end
 
@@ -130,6 +143,20 @@ class TeamCityFormatter < XCPretty::Simple
     @tests_summary_messages << message
     write_to_file_if_needed
     super
+  end
+
+  def teamcity_error_message(message, details)
+    STDOUT.puts "##teamcity[message text='#{message}' errorDetails='#{format_details(details)}' status='ERROR']\n"
+  end
+
+  # Need to sub out characters so that TC can parse the ##teamcity message correctly
+  # https://www.jetbrains.com/help/teamcity/build-script-interaction-with-teamcity.html#BuildScriptInteractionwithTeamCity-Escapedvalues
+  def format_details(detail)
+    detail.gsub('|', '||')
+          .gsub("\n", '|n')
+          .gsub("'", "|'")
+          .gsub('[', '|[')
+          .gsub(']', '|]')
   end
 
   def finish
